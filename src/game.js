@@ -2823,7 +2823,7 @@ level1.add(new Block(0, 14, 19, 2));
 level1.add(new Block(21, 14, 17, 2));
 level1.add(new BlueBlock(29, 11, 4, 1));
 level1.add(new RedBlock(35, 11, 4, 1));
-level1.add(new MessageTrigger(2, 2, 2, 2, "This is a cannon. A cannon will launch you in the direction shown on the front of \nthe cannon. Press the JUMP (up key) button to fire!", true));
+level1.add(new MessageTrigger(2, 2, 2, 2, "This is a cannon. Cannons will launch you in the direction shown on the front of \nthem. Press the JUMP (up key) button to fire!", true));
 level1.add(new Barrel(2, 2, Direction.UP, 30));
 level1.add(new Barrel(2, -6, Direction.UP, 30));
 level1.add(new Barrel(2, -14, Direction.RIGHT, 30));
