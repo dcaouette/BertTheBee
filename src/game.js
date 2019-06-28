@@ -2845,7 +2845,7 @@ level1.add(new Letter(15, 0));
 level1.add(new Letter(34, -5));
 level1.add(new Letter(47, 13));
 level1.add(new Letter(63, -16));
-level1.add(new MessageTrigger(60, -13, 7, 7, "This yellow box is called a \"Cagie 2D.0\". The only way to open it \nis to find all of the B-E-R-T letters!", true));
+level1.add(new MessageTrigger(60, -13, 7, 7, "This yellow box is called a \"Cagie 2.0\". The only way to open it \nis to find all of the B-E-R-T letters!", true));
 level1.add(new Cagie(61, -12, 5, 5, level1));
 level1.add(new Block(55, 6, 2, 9));
 level1.add(new Block(59, -6, 9, 15));
