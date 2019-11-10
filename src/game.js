@@ -17,10 +17,13 @@ var Commands;
     Commands[Commands["JUMP"] = 0] = "JUMP";
     Commands[Commands["JUMP_RELEASE"] = 1] = "JUMP_RELEASE";
     Commands[Commands["DUCK"] = 2] = "DUCK";
-    Commands[Commands["LEFT"] = 3] = "LEFT";
-    Commands[Commands["RIGHT"] = 4] = "RIGHT";
-    Commands[Commands["RUN"] = 5] = "RUN";
-    Commands[Commands["RUN_RELEASE"] = 6] = "RUN_RELEASE";
+    Commands[Commands["DUCK_PRESSED"] = 3] = "DUCK_PRESSED";
+    Commands[Commands["LEFT"] = 4] = "LEFT";
+    Commands[Commands["RIGHT"] = 5] = "RIGHT";
+    Commands[Commands["RUN"] = 6] = "RUN";
+    Commands[Commands["RUN_RELEASE"] = 7] = "RUN_RELEASE";
+    Commands[Commands["RUN_PRESSED"] = 8] = "RUN_PRESSED";
+    Commands[Commands["PAUSE"] = 9] = "PAUSE";
 })(Commands || (Commands = {}));
 var JumpCommand = /** @class */ (function () {
     function JumpCommand() {
@@ -99,6 +102,188 @@ var Physics = /** @class */ (function () {
     Physics.STANDARD_MAX_RUN_SPEED = 6;
     return Physics;
 }());
+/**
+ * A template for all menus in the game.
+ */
+var Menu = /** @class */ (function () {
+    function Menu() {
+        this.currentOption = 0;
+        this.setMenuOptions();
+        //this.returnMenu = retMen;
+    }
+    Menu.prototype.onEnterCommand = function () {
+        return this.options[this.currentOption].execute();
+    };
+    Menu.prototype.moveUp = function () {
+        if (this.currentOption == 0) {
+            this.currentOption = this.options.length - 1;
+        }
+        else {
+            this.currentOption--;
+        }
+    };
+    Menu.prototype.moveDown = function () {
+        if (this.currentOption == this.options.length - 1) {
+            this.currentOption = 0;
+        }
+        else {
+            this.currentOption++;
+        }
+    };
+    /**
+     *
+     * @param cmds Expects current input (Controller.getInput())
+     */
+    Menu.prototype.handleInput = function (cmds) {
+        for (var _i = 0, cmds_1 = cmds; _i < cmds_1.length; _i++) {
+            var c = cmds_1[_i];
+            switch (c) {
+                case Commands.JUMP:
+                    this.onUpCommand();
+                    break;
+                case Commands.DUCK_PRESSED:
+                    this.onDownCommand();
+                    break;
+                case Commands.LEFT:
+                    this.onLeftCommand();
+                    break;
+                case Commands.RIGHT:
+                    this.onRightCommand();
+                    break;
+                case Commands.RUN_PRESSED:
+                    return this.onEnterCommand();
+                case Commands.PAUSE:
+                    this.onPauseCommand();
+                default:
+            }
+        }
+        return this;
+    };
+    /**
+     * Used to close the menu
+     */
+    Menu.CLOSE_MENU = null;
+    return Menu;
+}());
+var PauseMenu = /** @class */ (function (_super) {
+    __extends(PauseMenu, _super);
+    function PauseMenu() {
+        var _this = _super !== null && _super.apply(this, arguments) || this;
+        _this.PAUSE_HEIGHT = 120;
+        _this.PAUSE_MARGIN = 30;
+        _this.lowerLastOption = false;
+        _this.menuTitle = "Pause";
+        return _this;
+    }
+    PauseMenu.prototype.setMenuOptions = function () {
+        this.options = [
+            new MenuOption("Resume Game", function () { return Menu.CLOSE_MENU; }),
+            new MenuOption("View Totals", function () { return new TotalsMenu(); }),
+            new MenuOption("Options", function () { return new OptionsMenu(); }),
+            new MenuOption("Quit Game", function () { return new PauseMenu(); })
+        ];
+    };
+    PauseMenu.prototype.render = function (gs) {
+        var canvas = gs.getCanvas();
+        var ctx = gs.getContext();
+        ctx.save();
+        ctx.fillStyle = "silver";
+        ctx.fillText(this.menuTitle, this.PAUSE_MARGIN, this.PAUSE_HEIGHT);
+        for (var i = 0; i < this.options.length; i++) {
+            if (i == this.currentOption)
+                ctx.fillStyle = "yellow";
+            else
+                ctx.fillStyle = "white";
+            var space = (i * 40);
+            if (this.lowerLastOption && i == this.options.length - 1)
+                space += 20;
+            ctx.fillText(this.options[i].getText(), this.PAUSE_MARGIN, (this.PAUSE_HEIGHT + (this.PAUSE_HEIGHT / 2)) + space);
+        }
+        ctx.restore();
+    };
+    PauseMenu.prototype.onUpCommand = function () {
+        this.moveUp();
+    };
+    PauseMenu.prototype.onDownCommand = function () {
+        this.moveDown();
+    };
+    PauseMenu.prototype.onLeftCommand = function () { };
+    PauseMenu.prototype.onRightCommand = function () { };
+    PauseMenu.prototype.onPauseCommand = function () {
+    };
+    PauseMenu.prototype.setLowerLastOption = function (b) {
+        this.lowerLastOption = b;
+    };
+    return PauseMenu;
+}(Menu));
+var OptionsMenu = /** @class */ (function (_super) {
+    __extends(OptionsMenu, _super);
+    function OptionsMenu() {
+        var _this = _super.call(this) || this;
+        _this.menuTitle = "Options";
+        _this.setLowerLastOption(true);
+        return _this;
+    }
+    OptionsMenu.prototype.setMenuOptions = function () {
+        this.options = [
+            new MenuOption("Option 1", function () { return new OptionsMenu(); }),
+            new MenuOption("Option 2", function () { return new OptionsMenu(); }),
+            new MenuOption("Controls", function () { return new ControlsMenu(); }),
+            new MenuOption("Back", function () { return new PauseMenu(); })
+        ];
+    };
+    return OptionsMenu;
+}(PauseMenu));
+var TotalsMenu = /** @class */ (function (_super) {
+    __extends(TotalsMenu, _super);
+    function TotalsMenu() {
+        var _this = _super !== null && _super.apply(this, arguments) || this;
+        _this.menuTitle = "Totals";
+        return _this;
+    }
+    TotalsMenu.prototype.setMenuOptions = function () {
+        this.options = [
+            new MenuOption("Blah blah blah", function () { return new PauseMenu(); }),
+            new MenuOption("Back", function () { return new PauseMenu(); })
+        ];
+    };
+    return TotalsMenu;
+}(OptionsMenu));
+var ControlsMenu = /** @class */ (function (_super) {
+    __extends(ControlsMenu, _super);
+    function ControlsMenu() {
+        var _this = _super !== null && _super.apply(this, arguments) || this;
+        _this.menuTitle = "Controls";
+        return _this;
+    }
+    ControlsMenu.prototype.setMenuOptions = function () {
+        this.options = [
+            new MenuOption("Option 1", function () { return new ControlsMenu(); }),
+            new MenuOption("Option 2", function () { return new ControlsMenu(); }),
+            new MenuOption("Option 3", function () { return new ControlsMenu(); }),
+            new MenuOption("Back", function () { return new OptionsMenu(); })
+        ];
+    };
+    return ControlsMenu;
+}(OptionsMenu));
+var MenuOption = /** @class */ (function () {
+    /**
+     *
+     * @param label The name to appear on the menu for this option (Example: "Quit Game").
+     * @param execution An event that happens when the menu option is selected and returns the next menu to be displayed.
+     */
+    function MenuOption(label, execution) {
+        this.label = label;
+        this.execution = execution;
+    }
+    MenuOption.prototype.execute = function () {
+        return this.execution();
+    };
+    MenuOption.prototype.getText = function () {
+        return this.label;
+    };
+    return MenuOption;
+}());
 // game will support a single transition type
 var Transition = /** @class */ (function () {
     function Transition(gs) {
@@ -146,6 +331,7 @@ var GameManagerEvents;
 var GameManager = /** @class */ (function () {
     function GameManager() {
         this.titleScreen = true;
+        this.menu = null;
     }
     ;
     GameManager.prototype.isTransitioning = function () {
@@ -224,21 +410,20 @@ var GameManager = /** @class */ (function () {
             this.nextEvent = null;
         }
     };
-    GameManager.prototype.removeDeadObjects = function (list) {
-        if (this.level != null) {
-            if (list.length != 0) {
-                var levelList = this.level.getList();
-                for (var i = list.length - 1; i >= 0; i--) {
-                    levelList.splice(list[i], 1);
-                }
-            }
-        }
-    };
     GameManager.prototype.getCurrentSprtiteSheet = function () {
         return this.level.getTileMap().getSpriteSheet();
     };
     GameManager.getInstance = function () {
         return this.gameManager;
+    };
+    GameManager.prototype.getCurrentGameScreen = function () {
+        return this.gameScreen;
+    };
+    GameManager.prototype.getGameScreenWidth = function () {
+        return this.gameScreen.getCanvas().width;
+    };
+    GameManager.prototype.getGameScreenHeight = function () {
+        return this.gameScreen.getCanvas().height;
     };
     GameManager.gameManager = new GameManager();
     return GameManager;
@@ -255,6 +440,8 @@ var Renderer = /** @class */ (function () {
     Renderer.renderList = function (gs, g) {
         for (var _i = 0, g_1 = g; _i < g_1.length; _i++) {
             var go = g_1[_i];
+            if (!gs.objectIsInBounds(go))
+                continue;
             if (go instanceof Player) {
                 if (go.getColor() != null) {
                     var h = go.getHeight();
@@ -279,14 +466,12 @@ var Renderer = /** @class */ (function () {
                 continue;
             }
             if (go instanceof GameObject) {
-                if (gs.objectIsInBounds(go)) {
-                    if (go.hasTileMap()) {
-                        Renderer.renderGameObjectsTiles(gs, go, go.getTileMap());
-                    }
-                    else if (go.getColor() != null) {
-                        gs.getContext().fillStyle = go.getColor();
-                        gs.getContext().fillRect(Math.round(go.getX()), Math.round(go.getY()), go.getWidth(), go.getHeight());
-                    }
+                if (go.hasTileMap()) {
+                    Renderer.renderGameObjectsTiles(gs, go, go.getTileMap());
+                }
+                else if (go.getColor() != null) {
+                    gs.getContext().fillStyle = go.getColor();
+                    gs.getContext().fillRect(Math.round(go.getX()), Math.round(go.getY()), go.getWidth(), go.getHeight());
                 }
             }
         }
@@ -328,34 +513,66 @@ var Renderer = /** @class */ (function () {
             }
         }
     };
+    Renderer.renderMenu = function (gs, menu) {
+        if (menu != null) {
+            gs.getContext().fillStyle = "rgba(0,0,0, .6)";
+            gs.getContext().fillRect(0, 0, gs.getCanvas().width, gs.getCanvas().height);
+            menu.render(gs);
+        }
+    };
     Renderer.renderTiles = function (gs, tileMap) {
-        var size = tileMap.size();
+        var rows = tileMap.getRows();
+        var cols = tileMap.getColumns();
         var image = tileMap.getSpriteSheet().getImage();
-        for (var i = 0; i < size; i++) {
-            var currentTileObject = tileMap.getTileByIndex(i);
-            var currentTile = currentTileObject.getTile();
-            if (currentTile == null)
-                continue;
-            gs.getContext().drawImage(image, currentTile.getX(), currentTile.getY(), currentTile.getWidth(), currentTile.getHeight(), Math.round(currentTileObject.getX()), Math.round(currentTileObject.getY()), currentTile.getWidth(), currentTile.getHeight());
+        for (var i = 0; i < rows; i++) {
+            for (var j = 0; j < cols; j++) {
+                var currentTileObject = tileMap.getTilesByCoords(i, j);
+                var currentTile = currentTileObject.getTile();
+                if (currentTile == null)
+                    continue;
+                if (!gs.tileObjectIsInWidthBounds(currentTileObject)) {
+                    break;
+                }
+                if (!gs.tileObjectIsInHeightBounds(currentTileObject)) {
+                    continue;
+                }
+                gs.getContext().drawImage(image, currentTile.getX(), currentTile.getY(), currentTile.getWidth(), currentTile.getHeight(), Math.round(currentTileObject.getX()), Math.round(currentTileObject.getY()), currentTile.getWidth(), currentTile.getHeight());
+            }
         }
     };
     Renderer.renderGameObjectsTiles = function (gs, go, tileMap) {
-        var size = tileMap.size();
+        var rows = tileMap.getRows();
+        var cols = tileMap.getColumns();
         var image = tileMap.getSpriteSheet().getImage();
-        for (var i = 0; i < size; i++) {
-            var currentTileObject = tileMap.getTileByIndex(i, go);
-            var currentTile = currentTileObject.getTile();
-            if (currentTile == null)
-                continue;
-            gs.getContext().drawImage(image, currentTile.getX(), currentTile.getY(), currentTile.getWidth(), currentTile.getHeight(), Math.round(currentTileObject.getX()), Math.round(currentTileObject.getY()), currentTile.getWidth(), currentTile.getHeight());
+        for (var i = 0; i < rows; i++) {
+            for (var j = 0; j < cols; j++) {
+                var currentTileObject = tileMap.getTilesByCoords(i, j, go);
+                var currentTile = currentTileObject.getTile();
+                if (currentTile == null)
+                    continue;
+                if (!gs.tileObjectIsInWidthBounds(currentTileObject)) {
+                    break;
+                }
+                if (!gs.tileObjectIsInHeightBounds(currentTileObject)) {
+                    continue;
+                }
+                gs.getContext().drawImage(image, currentTile.getX(), currentTile.getY(), currentTile.getWidth(), currentTile.getHeight(), Math.round(currentTileObject.getX()), Math.round(currentTileObject.getY()), currentTile.getWidth(), currentTile.getHeight());
+            }
         }
     };
     Renderer.renderLevelUI = function (gs, ui) {
+        // draw UI and lives
         var ctx = gs.getContext();
-        ctx.drawImage(ui.getImage(), ui.getX(), ui.getY());
-        ctx.globalAlpha = .6;
-        Renderer.renderTiles(gs, ui.getLayer1());
-        ctx.globalAlpha = 1;
+        var uiX = ui.getX();
+        var uiY = ui.getY();
+        var uiImage = ui.getImage();
+        ctx.drawImage(uiImage, uiX, uiY);
+        // ctx.globalAlpha = .6;
+        // Renderer.renderTiles(gs, ui.getLayer1());
+        // ctx.globalAlpha = 1;
+        //let posObj: TileObject = ui.getLayer1().getTileByIndex(0);
+        ctx.fillStyle = "rgba(255, 255, 255, .6)";
+        ctx.fillRect(uiX, uiY, uiImage.width, uiImage.height);
         Renderer.renderTiles(gs, ui.getLayer2());
         ctx.font = ui.getFont();
         ctx.fillStyle = ui.getFontColor();
@@ -363,25 +580,36 @@ var Renderer = /** @class */ (function () {
         var collected = ui.getLettersCollected();
         var temp = "";
         var y = ui.getY() + (ui.getHeight() / 2) + (ui.getFontSize() / 2);
-        var x = TileMap.UNIT * 8;
+        var x = TileMap.UNIT * 7.5;
         var letterSpacing = 20;
+        // draw bert letters
         for (var i = 0; i < letters.length; i++) {
             temp += letters.charAt(i);
             if (collected[i] == true) {
                 var left = x + ctx.measureText(temp).width + (letterSpacing * i);
                 ctx.strokeStyle = "black";
                 ctx.fillText(letters.charAt(i), left, y);
-                ctx.lineWidth = 2;
-                ctx.strokeText(letters.charAt(i), left, y);
                 ctx.lineWidth = 1;
+                ctx.strokeText(letters.charAt(i), left, y);
+                // ctx.lineWidth = 1;
             }
             else {
-                ctx.lineWidth = 2;
+                ctx.lineWidth = 1;
                 ctx.strokeStyle = "black";
                 ctx.strokeText(letters.charAt(i), x + ctx.measureText(temp).width + (letterSpacing * i), y);
-                ctx.lineWidth = 1;
+                // ctx.lineWidth = 1;
             }
         }
+        // draw score
+        Renderer.renderTiles(gs, ui.getScoreLayer());
+        //ctx.save();
+        ctx.fillStyle = "yellow";
+        ctx.strokeStyle = "black";
+        ctx.fillText(ui.getScoreText(), ui.getScoreLayer().getTileByIndex(0).getX() + TileMap.UNIT, y);
+        ctx.lineWidth = 1;
+        ctx.strokeText(ui.getScoreText(), ui.getScoreLayer().getTileByIndex(0).getX() + TileMap.UNIT, y);
+        //ctx.restore();
+        // ctx.lineWidth = 1;
     };
     Renderer.renderObservers = function (gs, obs) {
         var temp = null;
@@ -441,7 +669,7 @@ var Renderer = /** @class */ (function () {
     Renderer.renderLevel = function (gs, level) {
         Renderer.renderBackground(gs, level.getBgObjs());
         Renderer.renderTiles(gs, level.getTileMap());
-        Renderer.renderList(gs, level.getList());
+        Renderer.renderList(gs, level.getRenderList());
         Renderer.renderObservers(gs, level.getObservers());
     };
     Renderer.clearGameScreen = function (screen, color) {
@@ -467,6 +695,24 @@ var GameScreen = /** @class */ (function () {
     };
     GameScreen.prototype.objectIsInBounds = function (g) {
         if ((g.getRight() > -5 && g.getX() < this.getCanvas().width + 5) && (g.getBottom() > -5 && g.getY() < this.getCanvas().height + 5))
+            return true;
+        else
+            return false;
+    };
+    GameScreen.prototype.tileObjectIsInBounds = function (g) {
+        if ((g.getX() + g.getTile().getWidth() >= 0 && g.getX() <= this.getCanvas().width) && (g.getY() + g.getTile().getHeight() >= 0 && g.getY() <= this.getCanvas().height))
+            return true;
+        else
+            return false;
+    };
+    GameScreen.prototype.tileObjectIsInWidthBounds = function (g) {
+        if ((g.getX() + g.getTile().getWidth() >= 0 && g.getX() <= this.getCanvas().width))
+            return true;
+        else
+            return false;
+    };
+    GameScreen.prototype.tileObjectIsInHeightBounds = function (g) {
+        if ((g.getY() + g.getTile().getHeight() >= 0 && g.getY() <= this.getCanvas().height))
             return true;
         else
             return false;
@@ -498,7 +744,7 @@ var Camera = /** @class */ (function () {
     }
     Camera.prototype.update = function (level) {
         //if player goes beyond mid screen...
-        var list = level.getList();
+        var list = level.getRenderList();
         var bgs = level.getBgObjs();
         var tiles = level.getTileMap();
         var xoffset = this.attachment.getRight() - this.X_OFFSET;
@@ -682,6 +928,9 @@ var TileMap = /** @class */ (function () {
         var column = Math.floor((index) / this.nbrOfRows);
         return new TileObject(this.sheet.getTile(this.tiles[index]), xoffset + row * this.sheet.getTileWidth(), yoffset + column * this.sheet.getTileHeight());
     };
+    TileMap.prototype.getTilesByCoords = function (x, y, go) {
+        return this.getTileByIndex(y * this.nbrOfRows + x, go);
+    };
     TileMap.prototype.moveTileMapBy = function (posX, posY) {
         this.x += posX;
         this.y += posY;
@@ -702,6 +951,12 @@ var TileMap = /** @class */ (function () {
     TileMap.prototype.clearTileMap = function () {
         this.tiles = [];
     };
+    TileMap.prototype.getRows = function () {
+        return this.nbrOfRows;
+    };
+    TileMap.prototype.getColumns = function () {
+        return this.nbrOfColumns;
+    };
     TileMap.UNIT = 32;
     return TileMap;
 }());
@@ -713,8 +968,9 @@ var GameEvent;
     GameEvent[GameEvent["PLAYER_DIED"] = 3] = "PLAYER_DIED";
     GameEvent[GameEvent["PLAYER_DUCK"] = 4] = "PLAYER_DUCK";
     GameEvent[GameEvent["LEVEL_RESTART"] = 5] = "LEVEL_RESTART";
-    GameEvent[GameEvent["LETTER_COLLECTED"] = 6] = "LETTER_COLLECTED";
-    GameEvent[GameEvent["ALL_LETTERS_COLLECTED"] = 7] = "ALL_LETTERS_COLLECTED";
+    GameEvent[GameEvent["SCORE_INCREASE"] = 6] = "SCORE_INCREASE";
+    GameEvent[GameEvent["LETTER_COLLECTED"] = 7] = "LETTER_COLLECTED";
+    GameEvent[GameEvent["ALL_LETTERS_COLLECTED"] = 8] = "ALL_LETTERS_COLLECTED";
 })(GameEvent || (GameEvent = {}));
 var Observer = /** @class */ (function () {
     function Observer() {
@@ -817,7 +1073,7 @@ var MessageBox = /** @class */ (function (_super) {
                 this.alpha += this.INCREMENT;
             }
             if (this.current !== this.getCurrentMessage()) {
-                if (this.counter % 3 == 0)
+                if (this.counter % 2 == 0)
                     this.current += this.getCurrentMessage().charAt(this.currentLetter++);
                 if (this.counter >= this.TRANSITION_COUNT) {
                     this.offset++;
@@ -916,6 +1172,7 @@ var LevelUI = /** @class */ (function (_super) {
         _this.playerRef = playerRef;
         _this.spritesheetRef = spritesheetRef;
         _this.lives = -1;
+        _this.score = -1;
         _this.posX = 0;
         _this.posY = 0;
         _this.lettersCollected = [];
@@ -923,6 +1180,7 @@ var LevelUI = /** @class */ (function (_super) {
         _this.counter = 0;
         _this.layer1 = null;
         _this.layer2 = null;
+        _this.scoreLayer = null;
         _this.layer2Tiles = [];
         _this.ignore = false;
         _this.complete = false;
@@ -932,11 +1190,14 @@ var LevelUI = /** @class */ (function (_super) {
         _this.FONT_COLOR = "yellow";
         LevelUI.image.src = "imgs/UI_BG.png";
         _this.lives = _this.playerRef.getLives();
+        _this.score = _this.playerRef.getScore();
         _this.initLettersCollected();
         _this.layer1 = new TileMap(0, 1, TileMap.UNIT * 6, TileMap.UNIT * 2, spritesheetRef);
         _this.layer2 = new TileMap(TileMap.UNIT, TileMap.UNIT / 2, TileMap.UNIT * 4, TileMap.UNIT * 1, spritesheetRef);
+        _this.scoreLayer = new TileMap(GameManager.getInstance().getGameScreenWidth() - (TileMap.UNIT * 4), TileMap.UNIT / 2, TileMap.UNIT * 1, TileMap.UNIT * 1, spritesheetRef);
         _this.layer1.addTiles([LevelUI.TEXTURE_TILE, LevelUI.TEXTURE_TILE, LevelUI.TEXTURE_TILE, LevelUI.TEXTURE_TILE, LevelUI.TEXTURE_TILE, LevelUI.TEXTURE_TILE, LevelUI.TEXTURE_TILE, LevelUI.TEXTURE_TILE, LevelUI.TEXTURE_TILE, LevelUI.TEXTURE_TILE, LevelUI.TEXTURE_TILE, LevelUI.TEXTURE_TILE]);
         _this.setLayer2Tiles();
+        _this.scoreLayer.addTiles([LevelUI.FLOWER_TILE]);
         _this.ignore = true;
         return _this;
     }
@@ -948,6 +1209,10 @@ var LevelUI = /** @class */ (function (_super) {
         else if (event == GameEvent.PLAYER_HIT || event == GameEvent.LEVEL_RESTART) {
             this.lives = this.playerRef.getLives();
             this.setLayer2Tiles();
+            this.showUI();
+        }
+        else if (event == GameEvent.SCORE_INCREASE) {
+            this.score = this.playerRef.getScore();
             this.showUI();
         }
         else if (event == GameEvent.PLAYER_DUCK) {
@@ -988,6 +1253,13 @@ var LevelUI = /** @class */ (function (_super) {
     LevelUI.prototype.getName = function () {
         return LevelUI.letters;
     };
+    LevelUI.prototype.getScoreText = function () {
+        var temp = "x";
+        if (this.score < 10 && this.score >= 0) {
+            temp += "0";
+        }
+        return temp + this.score;
+    };
     LevelUI.prototype.setLayer2Tiles = function () {
         this.layer2.clearTileMap();
         this.layer2Tiles = [];
@@ -1001,6 +1273,9 @@ var LevelUI = /** @class */ (function (_super) {
     };
     LevelUI.prototype.getLayer2 = function () {
         return this.layer2;
+    };
+    LevelUI.prototype.getScoreLayer = function () {
+        return this.scoreLayer;
     };
     LevelUI.prototype.getImage = function () {
         return LevelUI.image;
@@ -1028,16 +1303,18 @@ var LevelUI = /** @class */ (function (_super) {
             this.counter = 0;
         }
     };
+    LevelUI.prototype.moveLayersBy = function (y) {
+        this.posY += y;
+        this.layer1.moveTileMapBy(0, y);
+        this.layer2.moveTileMapBy(0, y);
+        this.scoreLayer.moveTileMapBy(0, y);
+    };
     LevelUI.prototype.update = function () {
         if (this.show && this.posY <= 0) {
-            this.posY += 2;
-            this.layer1.moveTileMapBy(0, 2);
-            this.layer2.moveTileMapBy(0, 2);
+            this.moveLayersBy(2);
         }
         else if (!this.show && this.posY + this.getHeight() > 0 && !this.ignore) {
-            this.posY -= 2;
-            this.layer1.moveTileMapBy(0, -2);
-            this.layer2.moveTileMapBy(0, -2);
+            this.moveLayersBy(-2);
         }
         else {
             this.counter++;
@@ -1064,6 +1341,7 @@ var LevelUI = /** @class */ (function (_super) {
     LevelUI.TEXTURE_TILE = 20; // tile number
     LevelUI.PLAYER_HEAD_TILE = 19; // tile number
     LevelUI.HEALTH_TILE = 21; // tile number
+    LevelUI.FLOWER_TILE = 52;
     LevelUI.letters = "BERT";
     return LevelUI;
 }(Observer));
@@ -1071,7 +1349,9 @@ var Level = /** @class */ (function () {
     function Level(tileMap, camera, bgObjs) {
         this.tileMap = tileMap;
         this.camera = camera;
-        this.list = [];
+        this.renderList = [];
+        this.playerOnlyCollidables = [];
+        this.allOtherCollidables = [];
         this.layerCount = [0, 0, 0];
         this.bgObjects = [];
         this.observers = [];
@@ -1097,7 +1377,7 @@ var Level = /** @class */ (function () {
         return this.levelUI;
     };
     Level.prototype.reset = function () {
-        for (var _i = 0, _a = this.list; _i < _a.length; _i++) {
+        for (var _i = 0, _a = this.renderList; _i < _a.length; _i++) {
             var g = _a[_i];
             g.reset();
         }
@@ -1107,6 +1387,42 @@ var Level = /** @class */ (function () {
             g.reset();
         }
         this.notifyAll(GameEvent.LEVEL_RESTART);
+    };
+    Level.prototype.removeDeadObjects = function (objectsToRemove) {
+        if (objectsToRemove.length != 0) {
+            for (var i = objectsToRemove.length - 1; i >= 0; i--) {
+                var index = void 0;
+                if (objectsToRemove[i].isPlayerOnlyCollidable()) {
+                    index = this.findIndexOfObjectInList(objectsToRemove[i], this.playerOnlyCollidables);
+                    if (index == -1)
+                        new Error("Could not find dead GameObject to remove.");
+                    else
+                        //console.log(index);
+                        this.playerOnlyCollidables.splice(index, 1);
+                }
+                else {
+                    index = this.findIndexOfObjectInList(objectsToRemove[i], this.allOtherCollidables);
+                    if (index == -1)
+                        new Error("Could not find dead GameObject to remove.");
+                    else
+                        //console.log(index);
+                        this.allOtherCollidables.splice(index, 1);
+                }
+                index = this.findIndexOfObjectInList(objectsToRemove[i], this.renderList);
+                if (index == -1)
+                    new Error("Could not find dead GameObject to remove.");
+                else
+                    //console.log(index);
+                    this.renderList.splice(index, 1);
+            }
+        }
+    };
+    Level.prototype.findIndexOfObjectInList = function (g, gameList) {
+        for (var i = 0; i < gameList.length; i++) {
+            if (g == gameList[i])
+                return i;
+        }
+        return -1;
     };
     //adds to first layer
     Level.prototype.add = function (g, layer) {
@@ -1119,33 +1435,39 @@ var Level = /** @class */ (function () {
             this.addObserver(this.levelUI);
             this.playerRef.addObserver(this.levelUI);
         }
+        if (g.isPlayerOnlyCollidable()) {
+            this.playerOnlyCollidables.push(g);
+        }
+        else {
+            this.allOtherCollidables.push(g);
+        }
         // only 3 layers
         if (layer < 0)
             layer = 0;
         else if (layer > 2)
             layer = 2;
         // if nothing is in the list
-        if (this.list == []) {
-            this.list.push(g);
+        if (this.renderList == []) {
+            this.renderList.push(g);
             this.layerCount[layer] = 1;
             return;
         }
         if (layer == 0) {
-            this.list.splice(this.layerCount[0]++, 0, g);
+            this.renderList.splice(this.layerCount[0]++, 0, g);
             return;
         }
         if (layer == 1) {
-            this.list.splice(this.layerCount[0] + this.layerCount[1]++, 0, g);
+            this.renderList.splice(this.layerCount[0] + this.layerCount[1]++, 0, g);
             return;
         }
         if (layer == 2) {
-            this.list.splice(this.layerCount[0] + this.layerCount[1] + this.layerCount[2]++, 0, g);
+            this.renderList.splice(this.layerCount[0] + this.layerCount[1] + this.layerCount[2]++, 0, g);
             return;
         }
     };
     Level.prototype.addBgObjs = function (obj) {
         if (this.bgObjects.length >= 3) {
-            console.log("Error: too many backgrounds");
+            //console.log("Error: too many backgrounds");
             return;
         }
         else {
@@ -1158,8 +1480,14 @@ var Level = /** @class */ (function () {
     Level.prototype.getPlayer = function () {
         return this.playerRef;
     };
-    Level.prototype.getList = function () {
-        return this.list;
+    Level.prototype.getRenderList = function () {
+        return this.renderList;
+    };
+    Level.prototype.getAllCollidables = function () {
+        return this.allOtherCollidables;
+    };
+    Level.prototype.getPlayerOnlyCollidables = function () {
+        return this.playerOnlyCollidables;
     };
     Level.prototype.getTileMap = function () {
         return this.tileMap;
@@ -1253,6 +1581,8 @@ var Controller = /** @class */ (function () {
             temp.push(Commands.DUCK);
         else if (this.isPressed(this.UP))
             temp.push(Commands.JUMP);
+        if (this.isPressed(this.P))
+            temp.push(Commands.PAUSE);
         if (temp == [])
             return;
         else
@@ -1260,6 +1590,34 @@ var Controller = /** @class */ (function () {
                 var c = temp_1[_i];
                 p.handleInput(c);
             }
+    };
+    Controller.getInput = function () {
+        var temp = [];
+        if (this.isKeyDown(this.S))
+            temp.push(Commands.RUN);
+        else
+            temp.push(Commands.RUN_RELEASE);
+        if (this.isKeyDown(this.LEFT))
+            temp.push(Commands.LEFT);
+        else if (this.isKeyDown(this.RIGHT))
+            temp.push(Commands.RIGHT);
+        if (this.isReleased(this.UP))
+            temp.push(Commands.JUMP_RELEASE);
+        if (this.isKeyDown(this.DOWN))
+            temp.push(Commands.DUCK);
+        else if (this.isPressed(this.UP))
+            temp.push(Commands.JUMP);
+        if (this.isPressed(this.DOWN)) {
+            temp.push(Commands.DUCK_PRESSED);
+        }
+        ;
+        if (this.isPressed(this.S)) {
+            temp.push(Commands.RUN_PRESSED);
+        }
+        ;
+        if (this.isPressed(this.P))
+            temp.push(Commands.PAUSE);
+        return temp;
     };
     Controller.isKeyDown = function (button) {
         if (Controller.KEYS && Controller.KEYS[button.getKey()] === true)
@@ -1293,12 +1651,15 @@ var Controller = /** @class */ (function () {
     Controller.RIGHT = new Button(39);
     Controller.DOWN = new Button(40);
     Controller.S = new Button(83);
+    Controller.P = new Button(80);
     return Controller;
 }());
 /// <reference path="Commands.ts" />
 /// <reference path="Controls.ts" />
 /// <reference path="Game.ts" />
 // compile: tsc --outFile src/game.js GameObjects.ts Commands.ts Controls.ts Game.ts
+// TODO: FIX GRAPHICAL GLITCH IN PAUSE MENU
+// TODO: FIX GRAPHICAL GLITCH WITH BARRELS
 var BoundingBox = /** @class */ (function () {
     function BoundingBox(leftOffset, topOffset, rightOffset, bottomOffset) {
         this.leftOffset = leftOffset;
@@ -1334,6 +1695,7 @@ var GameObject = /** @class */ (function () {
         this.hasFriction = false;
         this.hasGravity = false;
         this.tileMap = null;
+        this.playerOnly = false;
         this.x *= TileMap.UNIT;
         this.y *= TileMap.UNIT;
         this.width *= TileMap.UNIT;
@@ -1366,6 +1728,12 @@ var GameObject = /** @class */ (function () {
             this.collision(obj, thisCollision);
             obj.collision(this, otherCollision);
         }
+    };
+    GameObject.prototype.isPlayerOnlyCollidable = function () {
+        return this.playerOnly;
+    };
+    GameObject.prototype.inReverse = function () {
+        return this.xVelocity > 0;
     };
     GameObject.prototype.setCustomBoundingBox = function (left, top, right, bottom) {
         this.boundingBox = new BoundingBox(left, top, right, bottom);
@@ -1650,6 +2018,85 @@ var Collision = /** @class */ (function () {
     };
     return Collision;
 }());
+var Animate = /** @class */ (function () {
+    function Animate(go, spriteSheet, tiles, reverseOffset, hFlip) {
+        this.tileMaps = [];
+        this.reverseTileMaps = [];
+        this.tileMapIndex = 0;
+        this.counter = 0;
+        this.horizontalFlip = false;
+        for (var i = 0; i < tiles.length; i++) {
+            this.tileMaps.push(Animate.createTileMap(go, spriteSheet, tiles[i]));
+            this.reverseTileMaps.push(Animate.createTileMap(go, spriteSheet, this.reverseTiles(tiles[i]), reverseOffset));
+        }
+        this.currentAnimation = this.tileMaps;
+        this.allowHorizontalFlip(hFlip);
+        this.nextAnimation();
+    }
+    Animate.prototype.getLengthOfTiles = function (tiles) {
+        var temp = 0;
+        for (var i = 0; i < tiles.length; i++)
+            for (var j = 0; j < tiles[i].length; j++)
+                temp++;
+        return temp;
+    };
+    Animate.prototype.reverseTiles = function (t) {
+        var temp = [];
+        for (var j = t.length - 1; j >= 0; j--) {
+            temp.push(t[j]);
+        }
+        return temp;
+    };
+    Animate.prototype.animate = function (frames) {
+        if (frames == null)
+            frames = Animate.DEFAULT_ANIMATION_FRAMES;
+        if (this.counter++ > frames) {
+            this.counter = 0;
+            this.nextAnimation();
+            return true;
+        }
+        return false;
+    };
+    Animate.prototype.nextAnimation = function () {
+        this.currentTileMap = this.currentAnimation[this.tileMapIndex];
+        if (this.tileMapIndex + 1 == this.currentAnimation.length)
+            this.tileMapIndex = 0;
+        else
+            this.tileMapIndex++;
+    };
+    Animate.prototype.allowHorizontalFlip = function (b) {
+        this.horizontalFlip = b;
+        if (!b)
+            this.reverseTileMaps = null;
+    };
+    Animate.prototype.flipRight = function () {
+        if (this.allowHorizontalFlip)
+            this.currentAnimation = this.reverseTileMaps;
+    };
+    Animate.prototype.flipLeft = function () {
+        if (this.allowHorizontalFlip)
+            this.currentAnimation = this.tileMaps;
+    };
+    Animate.prototype.getCurrentTileMap = function () {
+        return this.currentTileMap;
+    };
+    Animate.createTileMap = function (go, spriteSheet, tiles, tileOffset, xOffset, yOffset) {
+        if (xOffset == null)
+            xOffset = 0;
+        if (yOffset == null)
+            yOffset = 0;
+        if (tileOffset != null) {
+            for (var i = 0; i < tiles.length; i++) {
+                tiles[i] += tileOffset;
+            }
+        }
+        var tm = new TileMap(xOffset, yOffset, go.getWidth(), go.getHeight(), spriteSheet);
+        tm.addTiles(tiles);
+        return tm;
+    };
+    Animate.DEFAULT_ANIMATION_FRAMES = 30;
+    return Animate;
+}());
 var PlayerState = /** @class */ (function () {
     function PlayerState() {
     }
@@ -1693,6 +2140,9 @@ var NormalState = /** @class */ (function (_super) {
                 break;
             case Commands.DUCK:
                 player.notifyAll(GameEvent.PLAYER_DUCK);
+                break;
+            case Commands.PAUSE:
+                GameManager.getInstance().menu = new PauseMenu();
         }
     };
     NormalState.prototype.update = function (player) { };
@@ -1837,6 +2287,8 @@ var SwimState = /** @class */ (function (_super) {
                     player.setYVelocity(maxSwimFall);
                 player.notifyAll(GameEvent.PLAYER_MOVE);
                 break;
+            case Commands.PAUSE:
+                GameManager.getInstance().menu = new PauseMenu();
         }
     };
     SwimState.prototype.update = function (player) {
@@ -1872,7 +2324,6 @@ var DoubleJump = /** @class */ (function (_super) {
     DoubleJump.prototype.update = function (player) {
         if (player.groundedLastFrame() && !this.canJump) {
             this.canJump = true;
-            console.log("can jump");
         }
     };
     DoubleJump.prototype.hit = function (player) {
@@ -1888,6 +2339,7 @@ var Player = /** @class */ (function (_super) {
         _this.swimState = null;
         _this.steps = 0;
         _this.lives = 2;
+        _this.score = 0;
         _this.abilities = [];
         _this.wasGrounded = false; // was player grounded on the prior frame?
         _this.observers = [];
@@ -1899,16 +2351,18 @@ var Player = /** @class */ (function (_super) {
         return _this;
     }
     Player.prototype.handleInput = function (c) {
-        if (this.hasAbilities() && !(this.state instanceof LaunchedState)) {
-            for (var _i = 0, _a = this.abilities; _i < _a.length; _i++) {
-                var a = _a[_i];
-                a.handleInput(this, c);
+        if (!this.isDead()) {
+            if (this.hasAbilities() && !(this.state instanceof LaunchedState)) {
+                for (var _i = 0, _a = this.abilities; _i < _a.length; _i++) {
+                    var a = _a[_i];
+                    a.handleInput(this, c);
+                }
             }
+            if (!this.swimState)
+                this.state.handleInput(this, c);
+            else
+                this.swimState.handleInput(this, c);
         }
-        if (!this.swimState)
-            this.state.handleInput(this, c);
-        else
-            this.swimState.handleInput(this, c);
     };
     Player.prototype.update = function () {
         this.wasGrounded = this.isGrounded();
@@ -1931,6 +2385,13 @@ var Player = /** @class */ (function (_super) {
             else
                 this.invincible = null;
         }
+    };
+    Player.prototype.increaseScore = function () {
+        this.score++;
+        this.notifyAll(GameEvent.SCORE_INCREASE);
+    };
+    Player.prototype.getScore = function () {
+        return this.score;
     };
     Player.prototype.addObserver = function (obs) {
         this.observers.push(obs);
@@ -2008,6 +2469,10 @@ var Player = /** @class */ (function (_super) {
                 this.hit(3);
                 return;
             }
+            if (go instanceof Flower) {
+                this.increaseScore();
+                return;
+            }
             if (go instanceof Barrel) {
                 this.state = new LaunchedState(go);
                 return;
@@ -2059,7 +2524,6 @@ var Player = /** @class */ (function (_super) {
                         this.hit(3);
                         return;
                     }
-                    //this.movePositionBy(0, -bottom);
                     this.movePositionTo(this.getX(), go.getY() - this.getHeight());
                     this.setYVelocity(0);
                     this.setFriction(go.getFriction());
@@ -2069,13 +2533,11 @@ var Player = /** @class */ (function (_super) {
                 else if (collision.isCollidingWithLeft()) {
                     this.movePositionBy(collision.getLeftOffset(), 0);
                     this.setXVelocity(0);
-                    //console.log("LEFT!")
                 }
                 // right collision
                 else if (collision.isCollidingWithRight()) {
                     this.movePositionBy(-collision.getRightOffset(), 0);
                     this.setXVelocity(0);
-                    //console.log("RIGHT!")
                 }
                 return;
             }
@@ -2094,13 +2556,10 @@ var Player = /** @class */ (function (_super) {
                         this.hit(3);
                         return;
                     }
-                    //this.movePositionBy(0, -bottom);
                     this.movePositionTo(this.getX(), go.getY() - this.getHeight());
                     this.setYVelocity(0);
                     this.setFriction(go.getFriction());
-                    //console.log("BOTTOM!")
                     this.setGrounded(true);
-                    //this.notifyAll(GameEvent.DISPLAY_MESSAGE, "Hey there! This is a test!");
                 }
                 return;
             }
@@ -2130,6 +2589,7 @@ var ColorTile = /** @class */ (function (_super) {
     __extends(ColorTile, _super);
     function ColorTile(x, y, w, h) {
         var _this = _super.call(this, x, y, w, h) || this;
+        _this.playerOnly = true;
         _this.setColor("rgba(0, 120, 160)");
         _this.setFrictionState(false);
         return _this;
@@ -2145,6 +2605,7 @@ var Water = /** @class */ (function (_super) {
         _this.playerWasInLastFrame = false;
         _this.playerIsInThisFrame = false;
         _this.playerCollide = false;
+        _this.playerOnly = true;
         _this.setColor("rgba(0, 120, 190, .6)");
         _this.setFrictionState(false);
         return _this;
@@ -2174,6 +2635,7 @@ var Barrel = /** @class */ (function (_super) {
         _this.direction = direction;
         _this.launchVelocity = 25;
         _this.START_OF_CANNON_TILES = 22;
+        _this.playerOnly = true;
         _this.setColor("green");
         if (vel != undefined)
             _this.launchVelocity = Math.abs(vel);
@@ -2191,14 +2653,17 @@ var Barrel = /** @class */ (function (_super) {
     };
     Barrel.prototype.collision = function (obj, collison) {
         if (obj instanceof Player) {
-            this.launchObject = obj;
-            this.launchObject.movePositionTo(this.getX(), this.getY());
-            this.launchObject.setXVelocity(0);
-            this.launchObject.setYVelocity(0);
-            if (this.launchObject.getColor() != null)
-                this.launchObjectPriorColor = this.launchObject.getColor();
-            this.launchObject.setColor(null);
+            this.collisionWithPlayer(obj, collison);
         }
+    };
+    Barrel.prototype.collisionWithPlayer = function (obj, collision) {
+        this.launchObject = obj;
+        this.launchObject.movePositionTo(this.getX(), this.getY());
+        this.launchObject.setXVelocity(0);
+        this.launchObject.setYVelocity(0);
+        if (this.launchObject.getColor() != null)
+            this.launchObjectPriorColor = this.launchObject.getColor();
+        this.launchObject.setColor(null);
     };
     Barrel.prototype.launch = function () {
         if (this.launchObject) {
@@ -2257,6 +2722,51 @@ var Barrel = /** @class */ (function (_super) {
     };
     return Barrel;
 }(GameObject));
+var AutoBarrel = /** @class */ (function (_super) {
+    __extends(AutoBarrel, _super);
+    function AutoBarrel() {
+        return _super !== null && _super.apply(this, arguments) || this;
+    }
+    // OVERRIDE
+    AutoBarrel.prototype.collisionWithPlayer = function (obj, collision) {
+        _super.prototype.collisionWithPlayer.call(this, obj, collision);
+        this.launch();
+    };
+    return AutoBarrel;
+}(Barrel));
+/**
+ * @extends Barrel
+ */
+var DeadAutoBarrel = /** @class */ (function (_super) {
+    __extends(DeadAutoBarrel, _super);
+    function DeadAutoBarrel() {
+        return _super !== null && _super.apply(this, arguments) || this;
+    }
+    // OVERRIDE
+    DeadAutoBarrel.prototype.collisionWithPlayer = function (obj, collision) {
+        _super.prototype.collisionWithPlayer.call(this, obj, collision);
+        this.launch();
+        this.die();
+    };
+    return DeadAutoBarrel;
+}(Barrel));
+/**
+ * see [[Barrel]] class for more info
+ */
+var DeadBarrel = /** @class */ (function (_super) {
+    __extends(DeadBarrel, _super);
+    function DeadBarrel() {
+        return _super !== null && _super.apply(this, arguments) || this;
+    }
+    /**
+     * @override launch method from [Barrel] class
+     */
+    DeadBarrel.prototype.launch = function () {
+        _super.prototype.launch.call(this);
+        this.die();
+    };
+    return DeadBarrel;
+}(Barrel));
 var MovingBarrel = /** @class */ (function (_super) {
     __extends(MovingBarrel, _super);
     function MovingBarrel(posX, posY, facingDirection, movingDirection, movingSpeed, distance, vel) {
@@ -2309,6 +2819,8 @@ var Block = /** @class */ (function (_super) {
     __extends(Block, _super);
     function Block(x, y, width, height) {
         var _this = _super.call(this, x, y, width, height) || this;
+        _this.tileLayout = []; // TOP-LEFT, TOP-RIGHT, TOP-MID, 
+        _this.setTileLayout(11, 10, 12, 8, 7, 9, 14, 13, 15);
         _this.setSolid(true);
         _this.currentSpriteSheet = GameManager.getInstance().getCurrentSprtiteSheet(); // find a better way to pass this over
         _this.setTileMap(_this.createTileMap());
@@ -2316,6 +2828,18 @@ var Block = /** @class */ (function (_super) {
     }
     Block.prototype.collision = function (obj, collision) {
         return;
+    };
+    Block.prototype.setTileLayout = function (TOP_LEFT, TOP_MID, TOP_RIGHT, LEFT, MID, RIGHT, BOTTOM_LEFT, BOTTOM_MID, BOTTOM_RIGHT) {
+        this.tileLayout = [];
+        this.tileLayout.push(TOP_LEFT);
+        this.tileLayout.push(TOP_MID);
+        this.tileLayout.push(TOP_RIGHT);
+        this.tileLayout.push(BOTTOM_LEFT);
+        this.tileLayout.push(BOTTOM_MID);
+        this.tileLayout.push(BOTTOM_RIGHT);
+        this.tileLayout.push(LEFT);
+        this.tileLayout.push(RIGHT);
+        this.tileLayout.push(MID);
     };
     Block.prototype.createTileMap = function () {
         var tMap = new TileMap(this.getX(), this.getY(), this.getWidth(), this.getHeight(), this.currentSpriteSheet);
@@ -2328,29 +2852,54 @@ var Block = /** @class */ (function (_super) {
             for (var j = 0; j <= w - tileWidth; j += tileWidth) {
                 if (i == 0 && j == 0) // TOP LEFT TILE
                  {
-                    tiles.push(5);
+                    tiles.push(this.tileLayout[Block.TOP_LEFT]);
                 }
                 else if (i == 0 && j == w - tileWidth) // TOP RIGHT TILE
                  {
-                    tiles.push(6);
+                    tiles.push(this.tileLayout[Block.TOP_RIGHT]);
                 }
-                else if (i == 0) {
-                    tiles.push(4);
+                else if (i == 0) // TOP MID TILE
+                 {
+                    tiles.push(this.tileLayout[Block.TOP_MID]);
                 }
-                else if (j == w - tileWidth) {
-                    tiles.push(3);
+                else if (i == h - tileHeight && j == 0) // BOTTOM LEFT TILE
+                 {
+                    tiles.push(this.tileLayout[Block.BOTTOM_LEFT]);
                 }
-                else if (j == 0) {
-                    tiles.push(2);
+                else if (i == h - tileHeight && j == w - tileWidth) // BOTTOM RIGHT TILE
+                 {
+                    tiles.push(this.tileLayout[Block.BOTTOM_RIGHT]);
+                }
+                else if (i == h - tileHeight) // BOTTOM MID TILE
+                 {
+                    tiles.push(this.tileLayout[Block.BOTTOM_MID]);
+                }
+                else if (j == w - tileWidth) // RIGHT TILE
+                 {
+                    tiles.push(this.tileLayout[Block.RIGHT]);
+                }
+                else if (j == 0) // LEFT TILE
+                 {
+                    tiles.push(this.tileLayout[Block.LEFT]);
                 }
                 else {
-                    tiles.push(1);
+                    tiles.push(this.tileLayout[Block.MID]); // MID TILE
                 }
             }
         }
         tMap.addTiles(tiles);
+        this.tileLayout = null; // clear the tile layout after the tilemap has been built
         return tMap;
     };
+    Block.TOP_LEFT = 0;
+    Block.TOP_MID = 1;
+    Block.TOP_RIGHT = 2;
+    Block.BOTTOM_LEFT = 3;
+    Block.BOTTOM_MID = 4;
+    Block.BOTTOM_RIGHT = 5;
+    Block.LEFT = 6;
+    Block.MID = 8;
+    Block.RIGHT = 7;
     return Block;
 }(GameObject));
 var OnOffControlBlock = /** @class */ (function (_super) {
@@ -2358,6 +2907,7 @@ var OnOffControlBlock = /** @class */ (function (_super) {
     function OnOffControlBlock(x, y) {
         var _this = _super.call(this, x, y, 1, 1) || this;
         _this.innerOnState = false;
+        _this.playerOnly = true;
         _this.setSolid(true);
         _this.currentSpriteSheet = GameManager.getInstance().getCurrentSprtiteSheet(); // find a better way to pass this over
         _this.setTileMap(_this.createTileMap(OnOffControlBlock.ON));
@@ -2445,6 +2995,8 @@ var TopSolidBlock = /** @class */ (function (_super) {
     __extends(TopSolidBlock, _super);
     function TopSolidBlock(x, y, width, height) {
         var _this = _super.call(this, x, y, width, height) || this;
+        _this.setTileLayout(5, 4, 6, 2, 1, 3, 2, 1, 3);
+        _this.setTileMap(_this.createTileMap());
         _this.setColor("gray");
         _this.setSolid(false);
         _this.setTopSolid(true);
@@ -2510,6 +3062,7 @@ var Spikes = /** @class */ (function (_super) {
         _this.setColor("red");
         _this.currentSpriteSheet = GameManager.getInstance().getCurrentSprtiteSheet(); // find a better way to pass this over
         _this.setTileMap(_this.createTileMap());
+        _this.playerOnly = true;
         return _this;
     }
     Spikes.prototype.collision = function (obj, collision) {
@@ -2540,13 +3093,18 @@ var Enemy = /** @class */ (function (_super) {
 var WalkingEnemy = /** @class */ (function (_super) {
     __extends(WalkingEnemy, _super);
     function WalkingEnemy(x, y) {
-        var _this = _super.call(this, x, y, 1, 1) || this;
+        var _this = _super.call(this, x, y, 2, 1) || this;
         _this.speed = 3;
+        _this.currentSpriteSheet = null;
+        _this.animation = null;
         _this.setColor("red");
         _this.setGravity(true);
         _this.setXVelocity(-_this.speed);
+        _this.setCustomBoundingBox(-6, -14, -6, 0);
+        _this.currentSpriteSheet = GameManager.getInstance().getCurrentSprtiteSheet();
+        _this.animation = new Animate(_this, _this.currentSpriteSheet, [[WalkingEnemy.W1_1, WalkingEnemy.W1_2], [WalkingEnemy.W2_1, WalkingEnemy.W2_2], [WalkingEnemy.W3_1, WalkingEnemy.W3_2], [WalkingEnemy.W2_1, WalkingEnemy.W2_2]], WalkingEnemy.W_OFFSET, true);
+        _this.setTileMap(_this.animation.getCurrentTileMap());
         return _this;
-        //this.setSolid(true);
     }
     WalkingEnemy.prototype.collision = function (obj, collision) {
         if (obj instanceof Player) {
@@ -2580,16 +3138,68 @@ var WalkingEnemy = /** @class */ (function (_super) {
             return;
         }
     };
+    WalkingEnemy.prototype.update = function () {
+        _super.prototype.update.call(this);
+        if (this.inReverse()) {
+            this.animation.flipRight();
+        }
+        else {
+            this.animation.flipLeft();
+        }
+        if (this.animation.animate(5)) {
+            this.setTileMap(this.animation.getCurrentTileMap());
+        }
+    };
     WalkingEnemy.prototype.reset = function () {
         _super.prototype.reset.call(this);
         this.setXVelocity(-this.speed);
     };
+    WalkingEnemy.W1_1 = 42;
+    WalkingEnemy.W1_2 = 43;
+    WalkingEnemy.W2_1 = 44;
+    WalkingEnemy.W2_2 = 45;
+    WalkingEnemy.W3_1 = 44;
+    WalkingEnemy.W3_2 = 46;
+    WalkingEnemy.W_OFFSET = 5;
     return WalkingEnemy;
 }(Enemy));
+var Flower = /** @class */ (function (_super) {
+    __extends(Flower, _super);
+    function Flower(x, y) {
+        var _this = _super.call(this, x, y, 1, 2) || this;
+        _this.animation = null;
+        _this.currentSpriteSheet = null;
+        _this.playerOnly = true;
+        _this.setGravity(false);
+        _this.setSolid(false);
+        _this.setCustomBoundingBox(0, 0, 0, -25);
+        _this.currentSpriteSheet = GameManager.getInstance().getCurrentSprtiteSheet();
+        //this.animation = new Animate(this, this.currentSpriteSheet,[[Flower.F_1],[Flower.F_2],[Flower.F_3],[Flower.F_4],[Flower.F_5],[Flower.F_4],[Flower.F_3],[Flower.F_2]], 0, false);
+        _this.animation = new Animate(_this, _this.currentSpriteSheet, [[Flower.F_1, Flower.S_1], [Flower.F_2, Flower.S_2]], 0, false);
+        _this.setTileMap(_this.animation.getCurrentTileMap());
+        return _this;
+    }
+    Flower.prototype.collision = function (obj, collison) {
+        if (obj instanceof Player)
+            this.die();
+    };
+    Flower.prototype.update = function () {
+        _super.prototype.update.call(this);
+        if (this.animation.animate(20)) {
+            this.setTileMap(this.animation.getCurrentTileMap());
+        }
+    };
+    Flower.F_1 = 52;
+    Flower.F_2 = 53;
+    Flower.S_1 = 54;
+    Flower.S_2 = 55;
+    return Flower;
+}(GameObject));
 var DoubleJumpPowerUp = /** @class */ (function (_super) {
     __extends(DoubleJumpPowerUp, _super);
     function DoubleJumpPowerUp(posX, posY) {
         var _this = _super.call(this, posX, posY, 1, 1) || this;
+        _this.playerOnly = true;
         _this.setColor("orange");
         return _this;
     }
@@ -2605,6 +3215,7 @@ var MessageTrigger = /** @class */ (function (_super) {
         var _this = _super.call(this, posX, posY, w, h) || this;
         _this.message = message;
         _this.destroyable = destroyable;
+        _this.playerOnly = true;
         _this.setColor(null);
         return _this;
     }
@@ -2638,6 +3249,7 @@ var Letter = /** @class */ (function (_super) {
         _this.FONT_SIZE = 28;
         _this.FONT = "Georgia";
         _this.FONT_COLOR = "black";
+        _this.playerOnly = true;
         _this.setColor("yellow");
         if (Letter.count >= LevelUI.letters.length) {
             _this.die();
@@ -2681,7 +3293,7 @@ var Cagie = /** @class */ (function (_super) {
         _super.prototype.update.call(this);
         if (this.ui.allLettersCollected()) {
             this.die();
-            this.level.notifyAll(GameEvent.DISPLAY_MESSAGE, "Nice! Cagie unlocked!");
+            this.level.notifyAll(GameEvent.DISPLAY_MESSAGE, "Nice! Cage unlocked!");
         }
     };
     return Cagie;
@@ -2732,12 +3344,10 @@ var Mouse = /** @class */ (function (_super) {
         if (this.getY() < this.attachment.getY()) {
             this.movePositionTo(this.getX(), this.attachment.getY());
             this.setYVelocity(-this.getYVelocity());
-            console.log("above");
         }
         else if (this.getBottom() > this.attachment.getBottom()) {
             this.movePositionTo(this.getX(), this.attachment.getBottom() - this.getHeight());
             this.setYVelocity(-this.getYVelocity());
-            console.log("below");
         }
         if (++this.counter % 10 == 0) {
             if (this.animation) {
@@ -2799,14 +3409,26 @@ level1.addObserver(messageBox);
 gameManager.setCurrentGameScreen(srn);
 gameManager.setCurrentLevel(level1);
 gameManager.setCurrentCamera(camera);
-var list;
+var renderList;
 level1.add(player, 1);
 level1.add(focusBox, 1);
 level1.add(new Spikes(10, 1, 4), 0);
 level1.add(new Block(-2, 0, 2, 20), 0);
 level1.add(new RiseAndFallBlock(0, 9, 4, 1), 2);
+level1.add(new Flower(17, 11));
+level1.add(new Flower(18, 10));
+level1.add(new Flower(19, 9));
+level1.add(new Flower(20, 9));
+level1.add(new Flower(21, 10));
+level1.add(new Flower(22, 11));
+level1.add(new Flower(23, 12));
+level1.add(new Flower(24, 12));
+level1.add(new Flower(25, 12));
+level1.add(new Flower(26, 12));
+level1.add(new Flower(27, 12));
+level1.add(new Flower(28, 12));
 level1.add(new WalkingEnemy(2, -1), 1);
-level1.add(new WalkingEnemy(14, 0), 1);
+level1.add(new WalkingEnemy(14, 13), 1);
 var bigTop = new TopSolidBlock(10, 2, 7, 12);
 level1.add(bigTop, 0);
 level1.add(new Mouse(bigTop, 0, 2, 2));
@@ -2823,7 +3445,7 @@ level1.add(new Block(0, 14, 19, 2));
 level1.add(new Block(21, 14, 17, 2));
 level1.add(new BlueBlock(29, 11, 4, 1));
 level1.add(new RedBlock(35, 11, 4, 1));
-level1.add(new MessageTrigger(2, 2, 2, 2, "This is a cannon. Cannons will launch you in the direction shown on the front of \nthem. Press the JUMP (up key) button to fire!", true));
+level1.add(new MessageTrigger(2, 2, 2, 2, "This is a canon. A canon will launch you in the direction shown on the front of \nthe canon. Press the JUMP (up key) button to fire!", true));
 level1.add(new Barrel(2, 2, Direction.UP, 30));
 level1.add(new Barrel(2, -6, Direction.UP, 30));
 level1.add(new Barrel(2, -14, Direction.RIGHT, 30));
@@ -2835,7 +3457,7 @@ level1.add(new MovingBarrel(91, 6, Direction.RIGHT, Direction.DOWN, 7, 45, 30));
 level1.add(new MovingBarrel(101, 6, Direction.RIGHT, Direction.UP, 3, 45, 30));
 level1.add(new Cagie(111, -15, 2, 30, level1));
 level1.add(new Block(117, 14, 25, 2));
-level1.add(new MessageTrigger(117, 13, 25, 2, "Congrats! You made it through the first floor of the Impossible Lair! \nHowever, the second floor is still under construction...                              \n\nThanks for playing!", true));
+level1.add(new MessageTrigger(117, 13, 25, 2, "Congrats! You made it through the first floor of the Impossible Lair! \nHowever, the second floor is still underconstruction...                              \n\nThanks for playing!", true));
 level1.add(new BlueBlock(27, -4, 2, 5));
 level1.add(new DoubleJumpPowerUp(30, 0));
 level1.add(new MessageTrigger(30, 0, 1, 1, "You have received the Double Jump Power-up! Try jumping and then jumping \nagain while in mid-air!", true));
@@ -2845,7 +3467,7 @@ level1.add(new Letter(15, 0));
 level1.add(new Letter(34, -5));
 level1.add(new Letter(47, 13));
 level1.add(new Letter(63, -16));
-level1.add(new MessageTrigger(60, -13, 7, 7, "This yellow box is called a \"Cagie 2.0\". The only way to open it \nis to find all of the B-E-R-T letters!", true));
+level1.add(new MessageTrigger(60, -13, 7, 7, "This yellow box is a \"cage\". The only way to open it \nis to find all of the B-E-R-T letters!", true));
 level1.add(new Cagie(61, -12, 5, 5, level1));
 level1.add(new Block(55, 6, 2, 9));
 level1.add(new Block(59, -6, 9, 15));
@@ -2860,7 +3482,7 @@ level1.add(new Water(44, 3, 31, 12));
 level1.add(new Block(44, 15, 32, 1));
 level1.add(new Block(75, 2, 4, 14));
 level1.add(new RedBlock(79, -15, 4, 17));
-list = level1.getList();
+renderList = level1.getRenderList();
 var animateCount = 0;
 function main() {
     var me = window.requestAnimationFrame(main);
@@ -2893,8 +3515,12 @@ function main() {
             animateCount = -70;
         }
     }
+    else if (gameManager.menu != null) {
+        gameManager.menu = gameManager.menu.handleInput(Controller.getInput());
+        Renderer.renderLevel(srn, level1);
+        Renderer.renderMenu(srn, gameManager.menu);
+    }
     else {
-        var listSize = list.length;
         var removalList = []; // indicies where objects should be removed
         if (!srn.objectIsInBounds(player)) {
             gameManager.restartLevel();
@@ -2904,33 +3530,45 @@ function main() {
         player.update();
         messageBox.update();
         level1.getLevelUI().update();
-        for (var _i = 0, list_5 = list; _i < list_5.length; _i++) {
-            var go = list_5[_i];
+        for (var _i = 0, renderList_1 = renderList; _i < renderList_1.length; _i++) {
+            var go = renderList_1[_i];
             if (!(go instanceof Player) && srn.shouldUpdate(go))
                 go.update();
         }
         //collision checks
+        var playerOnlyList = level1.getPlayerOnlyCollidables();
+        var listSize = playerOnlyList.length;
         for (var z = 0; z < listSize; z++) {
-            var obj = list[z];
+            var obj = playerOnlyList[z];
+            if (!(obj instanceof Player))
+                player.collisionWith(obj);
+            if (playerOnlyList[z].isDead()) {
+                removalList.push(playerOnlyList[z]); //push dead objects on
+            }
+        }
+        var allOtherObjects = level1.getAllCollidables();
+        listSize = allOtherObjects.length;
+        for (var z = 0; z < listSize; z++) {
+            var obj = allOtherObjects[z];
             if (!(obj instanceof Player))
                 player.collisionWith(obj);
         }
         for (var i = 0; i < listSize - 1; i++) {
             for (var j = i + 1; j < listSize; j++) //collision testing
              {
-                if (list[j].isDead() || list[i].isDead() || list[i] instanceof Player || list[j] instanceof Player || !srn.shouldUpdate(list[i]) || !srn.shouldUpdate(list[j]))
+                if (allOtherObjects[j].isDead() || allOtherObjects[i].isDead() || allOtherObjects[i] instanceof Player || allOtherObjects[j] instanceof Player || !srn.shouldUpdate(allOtherObjects[i]) || !srn.shouldUpdate(allOtherObjects[j]))
                     continue;
-                list[i].collisionWith(list[j]);
+                allOtherObjects[i].collisionWith(allOtherObjects[j]);
             }
-            if (list[i].isDead()) {
-                removalList.push(i); //push dead objects on
+            if (allOtherObjects[i].isDead()) {
+                removalList.push(allOtherObjects[i]); //push dead objects on
                 // if the last item in the list is dead push it on
                 if (i == listSize - 2)
-                    removalList.push(j);
+                    removalList.push(allOtherObjects[listSize]);
             }
         }
-        if (list.length != 0)
-            gameManager.removeDeadObjects(removalList);
+        if (renderList.length != 0)
+            level1.removeDeadObjects(removalList);
         camera.update(level1);
         Renderer.renderLevel(srn, level1);
     }
